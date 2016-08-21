@@ -71,17 +71,3 @@ func (m *ConsulBackend) DeleteMap(prefix string) error {
 	_, err := kvc.DeleteTree(m.getOpaque(prefix), nil)
 	return err
 }
-
-func (m *ConsulBackend) IsKeyValid(key string) bool {
-	kvc := m.client.KV()
-	r, _, err := kvc.Get(m.getOpaque(key), nil)
-	if err != nil || r == nil {
-		return false
-	}
-
-	if len(r.Value) < 1 {
-		return false
-	}
-
-	return true
-}

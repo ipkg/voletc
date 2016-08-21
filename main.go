@@ -2,42 +2,42 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/docker/go-plugins-helpers/volume"
 )
 
-const (
-	defaultConsulUri = "consul://localhost:8500"
-	defaultBaseDir   = "/opt"
-)
-
 var (
-	baseDir    = flag.String("dir", defaultBaseDir, "Data directory")
-	dataPrefix = flag.String("p", driverName, "Path prefix to store data under")
-	backendUri = flag.String("uri", defaultConsulUri, "Backend uri")
-	listenAddr = flag.String("b", "127.0.0.1:8989", "Bind address")
-	version    = flag.Bool("version", false, "Show version")
+	driverConfig *DriverConfig
 )
 
 func init() {
+	flag.Usage = printUsage
 	flag.Parse()
 	setDefaultVersionInfo()
 
-	if *version {
-		printRelease()
-		os.Exit(0)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	driverConfig = NewDriverConfig(*backendUri, *baseDir, *dataPrefix)
+	cl, err := newCli(driverConfig)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	eor, err := cl.Run(flag.Args())
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	} else if eor {
+		os.Exit(0)
+	}
 }
 
 func main() {
-	// Init driver config
-	dc := NewDriverConfig(*backendUri, *baseDir, *dataPrefix)
 	// New Driver
-	driver, err := NewVolumeDriver(dc)
+	driver, err := NewVolumeDriver(driverConfig)
 	if err != nil {
 		log.Fatal(err)
 	}

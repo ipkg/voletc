@@ -19,7 +19,7 @@ var (
 )
 
 func init() {
-	testDrvCfg = NewDriverConfig(testConsulUri, "./testdata", "test-driver")
+	testDrvCfg = NewDriverConfig(testConsulUri, "/tmp/testrun", "test-driver")
 
 	var err error
 	if testDriver, err = NewVolumeDriver(testDrvCfg); err != nil {
@@ -47,7 +47,8 @@ func Test_VolumeDriver_Create(t *testing.T) {
 		Name: testName,
 		Options: map[string]string{
 			"n1/k1":                "v1",
-			"template:config.json": `{"key": "${n1/k1}"}`,
+			"template:inline.json": `{"key": "${n1/k1}"}`,
+			"template:config.json": "./testdata/config.json",
 		},
 	}
 
@@ -61,7 +62,7 @@ func Test_VolumeDriver_Create(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(c.Templates) != 1 {
+	if len(c.Templates) < 1 {
 		t.Log("no templates")
 		t.Fail()
 	}
@@ -80,6 +81,40 @@ func Test_VolumeDriver_Get(t *testing.T) {
 	}
 
 	t.Logf("%+v\n", *r2.Volume)
+
+	req2 := volume.Request{Name: "does-not-exist"}
+	r3 := testDriver.Get(req2)
+	if r3.Err == "" {
+		t.Fatal("get should fail")
+	}
+}
+
+func Test_VolumeDriver_List(t *testing.T) {
+	rsp := testDriver.List(volume.Request{})
+	if rsp.Err != "" {
+		t.Log(rsp.Err)
+		t.Fail()
+	}
+	if len(rsp.Volumes) < 1 {
+		t.Log("empty listing")
+		t.Fail()
+	}
+
+	found := false
+	for _, vol := range rsp.Volumes {
+		if vol.Name == testName {
+			found = true
+			break
+
+		}
+	}
+
+	if !found {
+		t.Log("volume not found")
+		t.Fail()
+	}
+
+	//t.Logf("%+v\n", rsp.Volumes)
 }
 
 func Test_VolumeDriver_Path(t *testing.T) {
@@ -96,6 +131,12 @@ func Test_VolumeDriver_Path(t *testing.T) {
 	}
 
 	t.Logf("%+v\n", r2)
+
+	req1 = volume.Request{Name: "does-not-exist"}
+	r2 = testDriver.Path(req1)
+	if r2.Err == "" {
+		t.Fatal("path should fail")
+	}
 }
 
 func Test_VolumeDriver_Mount(t *testing.T) {
@@ -106,7 +147,7 @@ func Test_VolumeDriver_Mount(t *testing.T) {
 		t.Fatal(r3.Err)
 	}
 
-	b, err := ioutil.ReadFile(testDriver.cfg.MountBaseDir + testAppCfg.getOpaque(testAppCfg.Env) + "/config.json")
+	b, err := ioutil.ReadFile(testDriver.cfg.MountBaseDir + testAppCfg.getOpaque(testAppCfg.Env) + "/inline.json")
 	if err != nil {
 		t.Log(err)
 		t.Fail()
@@ -140,6 +181,12 @@ func Test_VolumeDriver_Remove(t *testing.T) {
 	r3 := testDriver.Remove(req1)
 	if r3.Err != "" {
 		t.Fatal(r3.Err)
+	}
+
+	req1 = volume.Request{Name: "does-not-exist"}
+	r3 = testDriver.Remove(req1)
+	if r3.Err == "" {
+		t.Fatal("remove should fail")
 	}
 
 	// Cleanup

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -41,6 +42,8 @@ func NewDriverConfig(backendUri, basedir, prefix string) *DriverConfig {
 type MyVolumeDriver struct {
 	cfg *DriverConfig
 
+	ve *VolEtc
+
 	be Backend
 }
 
@@ -48,9 +51,10 @@ func NewVolumeDriver(cfg *DriverConfig) (*MyVolumeDriver, error) {
 	d := &MyVolumeDriver{cfg: cfg}
 	os.MkdirAll(d.cfg.MountBaseDir, 0777)
 
-	be, err := d.newBackend()
+	be, err := NewBackend(cfg)
 	if err == nil {
 		d.be = be
+		d.ve = &VolEtc{be}
 	}
 
 	return d, err
@@ -75,63 +79,31 @@ func (m *MyVolumeDriver) Create(req volume.Request) volume.Response {
 
 	c.Set(mp)
 
-	if err = c.Init(); err != nil {
+	if err = c.Commit(); err != nil {
 		return volume.Response{Err: err.Error()}
 	}
 
 	return volume.Response{}
 }
 
-// convert template:<name> to templates/<name> for storage
-func parseCreateReqOptions(m map[string]string) (map[string][]byte, error) {
-	out := map[string][]byte{}
-	for k, v := range m {
-		if strings.HasPrefix(k, "template:") {
-			l := strings.Index(k, ":") + 1
-			out["templates/"+k[l:]] = []byte(v)
-		} else if strings.HasPrefix(k, "templates/") {
-			return nil, fmt.Errorf("cannot use reserved prefix: 'templates/' in '%s'", k)
-		} else {
-			out[k] = []byte(v)
-		}
-	}
-	return out, nil
-}
-
 // Get the list of volumes registered with the plugin.
 func (m *MyVolumeDriver) List(req volume.Request) volume.Response {
 	log.Printf("[List] Request: %+v\n", req)
 
-	mp, err := m.be.GetMap("")
+	ls, err := m.ve.List()
 	if err != nil {
 		return volume.Response{Err: err.Error()}
 	}
 
 	resp := volume.Response{Capabilities: volume.Capability{Scope: driverScope}}
 
-	out := map[string]*volume.Volume{}
-
-	for k, _ := range mp {
-		pp := strings.Split(k, "/")
-		// TODO: Support app and version without environment
-		// this would be needed to check for templates but no keys
-		if pp[2] == "templates" {
-			continue
-		}
-
-		n := fmt.Sprintf("%s-%s-%s", pp[0], pp[1], pp[2])
-
-		if _, ok := out[n]; !ok {
-			out[n] = &volume.Volume{
-				Name:       n,
-				Mountpoint: m.cfg.MountBaseDir + n,
-			}
-		}
-	}
-	resp.Volumes = make([]*volume.Volume, len(out))
+	resp.Volumes = make([]*volume.Volume, len(ls))
 	i := 0
-	for _, v := range out {
-		resp.Volumes[i] = v
+	for _, v := range ls {
+		resp.Volumes[i] = &volume.Volume{
+			Name:       v.QualifiedName(),
+			Mountpoint: m.cfg.MountBaseDir + v.getOpaque(v.Env),
+		}
 		i++
 	}
 
@@ -143,14 +115,9 @@ func (m *MyVolumeDriver) List(req volume.Request) volume.Response {
 func (m *MyVolumeDriver) Get(req volume.Request) volume.Response {
 	log.Printf("[Get] Request: %+v\n", req)
 
-	c, err := NewAppConfigFromName(req.Name, m.be)
+	c, err := m.ve.Get(req.Name)
 	if err != nil {
 		return volume.Response{Err: err.Error()}
-	}
-
-	//if len(c.Keys) < 1 && len(c.Templates) < 1 {
-	if len(c.Keys) < 1 {
-		return volume.Response{Err: "not found: " + req.Name}
 	}
 
 	resp := volume.Response{
@@ -159,7 +126,7 @@ func (m *MyVolumeDriver) Get(req volume.Request) volume.Response {
 	resp.Volume = &volume.Volume{
 		Name:       req.Name,
 		Mountpoint: m.cfg.MountBaseDir + c.getOpaque(c.Env),
-		Status:     c.Meta(),
+		Status:     c.Metadata(),
 	}
 
 	log.Printf("[Get] Response: %+v\n", resp)
@@ -171,13 +138,13 @@ func (m *MyVolumeDriver) Get(req volume.Request) volume.Response {
 func (m *MyVolumeDriver) Remove(req volume.Request) volume.Response {
 	log.Printf("[Remove] Request: %+v\n", req)
 
-	resp := volume.Response{}
-	c, err := NewAppConfigFromName(req.Name, m.be)
-	if err == nil {
-		err = c.Destroy()
+	c, err := m.ve.Get(req.Name)
+	if err != nil {
+		return volume.Response{Err: err.Error()}
 	}
 
-	if err != nil {
+	resp := volume.Response{}
+	if err = c.Destroy(); err != nil {
 		resp.Err = err.Error()
 	}
 
@@ -191,18 +158,12 @@ func (m *MyVolumeDriver) Remove(req volume.Request) volume.Response {
 func (m *MyVolumeDriver) Path(req volume.Request) volume.Response {
 	log.Printf("[Path] Request: %+v\n", req)
 
-	resp := volume.Response{}
-	c, err := NewAppConfigFromName(req.Name, m.be)
-	if err == nil {
-		if len(c.Keys) < 1 && len(c.Templates) < 1 {
-			resp.Err = fmt.Sprintf("not found: %s", req.Name)
-		} else {
-			resp.Mountpoint = m.cfg.MountBaseDir + c.getOpaque(c.Env)
-		}
-	} else {
-		resp.Err = err.Error()
+	c, err := m.ve.Get(req.Name)
+	if err != nil {
+		return volume.Response{Err: err.Error()}
 	}
 
+	resp := volume.Response{Mountpoint: m.cfg.MountBaseDir + c.getOpaque(c.Env)}
 	log.Printf("[Path] Response: %+v\n", resp)
 	return resp
 }
@@ -210,7 +171,7 @@ func (m *MyVolumeDriver) Path(req volume.Request) volume.Response {
 func (m *MyVolumeDriver) Mount(req volume.MountRequest) volume.Response {
 	log.Printf("Mount: %+v\n", req)
 
-	c, err := NewAppConfigFromName(req.Name, m.be)
+	c, err := m.ve.Get(req.Name)
 	if err != nil {
 		return volume.Response{Err: err.Error()}
 	}
@@ -218,7 +179,7 @@ func (m *MyVolumeDriver) Mount(req volume.MountRequest) volume.Response {
 	dpath := m.cfg.MountBaseDir + c.getOpaque(c.Env)
 	os.MkdirAll(dpath, 0777)
 
-	if err = c.Load(dpath); err != nil {
+	if err = c.Generate(dpath); err != nil {
 		return volume.Response{Err: err.Error()}
 	}
 
@@ -230,7 +191,7 @@ func (m *MyVolumeDriver) Mount(req volume.MountRequest) volume.Response {
 func (m *MyVolumeDriver) Unmount(req volume.UnmountRequest) volume.Response {
 	log.Printf("[Unmount] Request: %+v\n", req)
 
-	c, err := NewAppConfigFromName(req.Name, m.be)
+	c, err := m.ve.Get(req.Name)
 	if err != nil {
 		return volume.Response{Err: err.Error()}
 	}
@@ -247,19 +208,30 @@ func (m *MyVolumeDriver) Capabilities(req volume.Request) volume.Response {
 	return volume.Response{Capabilities: volume.Capability{Scope: driverScope}}
 }
 
-func (m *MyVolumeDriver) newBackend() (Backend, error) {
-	var (
-		be  Backend
-		err error
-	)
+// convert template:<name> to templates/<name> for storage
+func parseCreateReqOptions(m map[string]string) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	for k, v := range m {
+		if strings.HasPrefix(k, "template:") {
+			l := strings.Index(k, ":") + 1
+			var val []byte
 
-	switch m.cfg.BackendType {
-	case "consul":
-		be, err = NewConsulBackend(m.cfg.BackendAddr, m.cfg.Prefix)
+			if strings.HasPrefix(v, "/") || strings.HasPrefix(v, "./") {
+				b, err := ioutil.ReadFile(v)
+				if err != nil {
+					return nil, err
+				}
+				val = b
+			} else {
+				val = []byte(v)
+			}
+			out["templates/"+k[l:]] = val
 
-	default:
-		err = fmt.Errorf("backend not supported: %s", m.cfg.BackendType)
+		} else if strings.HasPrefix(k, "templates/") {
+			return nil, fmt.Errorf("reserved prefix: 'templates/' in '%s'", k)
+		} else {
+			out[k] = []byte(v)
+		}
 	}
-
-	return be, err
+	return out, nil
 }

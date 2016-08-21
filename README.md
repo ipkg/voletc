@@ -57,13 +57,20 @@ Download the latest stable linux installer.  Once downloaded, untar and execute 
 	# Run installer
 	./voletc-installer
 
+This will install the binary and startup script in:
+
+- /usr/local/bin/voletc
+- /etc/init/voletc.conf
+
+respectively.  You can now start the service as follows:
+
 	# Start the agent
 	start voletc
 
 	# Make sure it is running
 	status voletc
 
-If the service does not start check the log located at `/var/log/voletc.log`
+To troubleshoot the service check the log located at `/var/log/voletc.log`
 
 #### Roadmap
 

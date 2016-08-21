@@ -3,6 +3,8 @@ NAMESPACE = ipkg
 NAME = voletc
 VERSION = $(shell grep "const VERSION" version.go | cut -d "\"" -f 2)
 
+INST_PKG_NAME = $(NAME)-$(VERSION)-$(shell go env GOOS).tgz
+
 PROJPATH = github.com/$(NAMESPACE)/$(NAME)
 
 BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
@@ -28,15 +30,15 @@ export VOLETC_INSTALL
 
 clean:
 	rm -rf ./build
+	rm -f ./coverage.out
 	go clean -i ./...
-	rm -rf ./testdata
 	rm -f $(NAME)-installer
 
 .PHONY: test
 test: clean
 	docker run -d -p 127.0.0.1:8500:8500 --name consul progrium/consul -server -bootstrap
-	@sleep 5;
-	go test -cover ./...; docker rm -f consul
+	@sleep 3;
+	go test -coverprofile=coverage.out ./...; docker rm -f consul
 
 
 .PHONY: deps
@@ -72,6 +74,8 @@ voletc.conf:
 
 .PHONY: installer
 installer: build
-	sea ./build/ $(NAME)-installer voletc ./install.sh
-	tar -czvf $(NAME)-$(VERSION).tgz $(NAME)-installer && rm $(NAME)-installer
+	sea ./build/ $(NAME)-installer voletc ./install.sh 
+	tar -czvf $(INST_PKG_NAME) $(NAME)-installer
+	mv $(NAME)-installer ./build/
+	mv $(INST_PKG_NAME) ./build/
 	

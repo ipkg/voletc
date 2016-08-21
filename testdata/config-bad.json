@@ -1,0 +1,13 @@
+{
+	"bind_addr":"127.0.0.1:8000",
+	"prefix": "/v1",
+	"database": {
+		"type": "postgresql",
+		"host": "127.0.0.1",
+		"port": 5432,
+		"dbname": "${db/name}",
+		"username": "${db/user}",
+		"password": "${db/password"
+	},
+	"guest_pass": "${guest-pass}"
+}

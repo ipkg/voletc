@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-const VERSION string = "0.1.4"
+const VERSION string = "0.1.5"
 
 var (
 	branch    string

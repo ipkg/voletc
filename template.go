@@ -1,27 +1,50 @@
 package main
 
 import (
+	"crypto/sha1"
 	"fmt"
+	"strings"
 )
 
-func parseTemplate(contents string, m map[string]string) (string, error) {
+type Template struct {
+	Name string `json:"name"`
+	Body []byte `json:"body"`
+	Sha1 string `json:"sha1"`
+}
+
+func NewTemplateFromKey(key string) *Template {
+	pp := strings.Split(key, "/")
+	if len(pp) > 1 {
+		return &Template{Name: pp[1]}
+	}
+
+	return nil
+}
+
+func (t *Template) SetBody(b []byte) {
+	t.Body = b
+	t.Sha1 = fmt.Sprintf("%x", sha1.Sum(t.Body))
+	return
+}
+
+func (t *Template) Render(m map[string]string) ([]byte, error) {
 	out := make([]byte, 0)
 
 	sm := -1
 	var i int
-	for i = 0; i < len(contents); i++ {
+	for i = 0; i < len(t.Body); i++ {
 
-		switch contents[i] {
+		switch t.Body[i] {
 		case '$':
-			if contents[i-1] != '\\' && contents[i+1] == '{' {
+			if t.Body[i-1] != '\\' && t.Body[i+1] == '{' {
 				sm = i + 2
 				i++
 				continue
 			}
 		case '}':
-			if contents[i-1] != '\\' && sm > -1 {
+			if t.Body[i-1] != '\\' && sm > -1 {
 
-				key := contents[sm:i]
+				key := string(t.Body[sm:i])
 				out = append(out, []byte(m[key])...)
 				sm = -1
 				continue
@@ -29,17 +52,18 @@ func parseTemplate(contents string, m map[string]string) (string, error) {
 
 		}
 		if sm < 0 {
-			out = append(out, contents[i])
+			out = append(out, t.Body[i])
 		}
 	}
 
 	err := validate(out)
-	return string(out), err
+	return out, err
 }
 
-func parseKeys(contents string) (map[string]bool, error) {
-	err := validate([]byte(contents))
-	if err != nil {
+// Extract keys from template
+func (t *Template) Keys() (map[string]bool, error) {
+	//func parseKeys(contents string) (map[string]bool, error) {
+	if err := t.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -47,20 +71,18 @@ func parseKeys(contents string) (map[string]bool, error) {
 
 	sm := -1
 	var i int
-	for i = 0; i < len(contents); i++ {
+	for i = 0; i < len(t.Body); i++ {
 
-		switch contents[i] {
+		switch t.Body[i] {
 		case '$':
-			if contents[i-1] != '\\' && contents[i+1] == '{' {
+			if t.Body[i-1] != '\\' && t.Body[i+1] == '{' {
 				sm = i + 2
 				i++
 				continue
 			}
 		case '}':
-			if contents[i-1] != '\\' && sm > -1 {
-
-				key := contents[sm:i]
-				tkeys[key] = false
+			if t.Body[i-1] != '\\' && sm > -1 {
+				tkeys[string(t.Body[sm:i])] = false
 				sm = -1
 				continue
 			}
@@ -69,6 +91,11 @@ func parseKeys(contents string) (map[string]bool, error) {
 	}
 
 	return tkeys, nil
+}
+
+// Validate curly braces
+func (t *Template) Validate() error {
+	return validate(t.Body)
 }
 
 func validate(in []byte) error {
@@ -83,7 +110,7 @@ func validate(in []byte) error {
 	}
 
 	if len(st) != 0 {
-		return fmt.Errorf("curly brace mismatch")
+		return fmt.Errorf("missing end brace: '%s'", st)
 	}
 	return nil
 }
