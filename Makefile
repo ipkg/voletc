@@ -34,7 +34,10 @@ clean:
 
 .PHONY: test
 test: clean
-	go test -cover ./...
+	docker run -d -p 127.0.0.1:8500:8500 --name consul progrium/consul -server -bootstrap
+	@sleep 5;
+	go test -cover ./...; docker rm -f consul
+
 
 .PHONY: deps
 deps:
