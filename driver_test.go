@@ -27,6 +27,20 @@ func init() {
 	}
 }
 
+func Test_VolumeDriver_Create_Error(t *testing.T) {
+	req := volume.Request{
+		Name: testName,
+		Options: map[string]string{
+			"n1/k1":                 "v1",
+			"templates/config.json": `{"key": "${n1/k1}"}`,
+		},
+	}
+	resp := testDriver.Create(req)
+	if resp.Err == "" {
+		t.Fatal("should fail")
+	}
+}
+
 func Test_VolumeDriver_Create(t *testing.T) {
 
 	req := volume.Request{

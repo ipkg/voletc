@@ -63,13 +63,16 @@ func NewVolumeDriver(cfg *DriverConfig) (*MyVolumeDriver, error) {
 func (m *MyVolumeDriver) Create(req volume.Request) volume.Response {
 	log.Printf("[Create] Request: %+v\n", req)
 	// Create kv structure on backend.
-
 	c, err := NewAppConfigFromName(req.Name, m.be)
 	if err != nil {
 		return volume.Response{Err: err.Error()}
 	}
 
-	mp := parseCreateReqOptions(req.Options)
+	mp, err := parseCreateReqOptions(req.Options)
+	if err != nil {
+		return volume.Response{Err: err.Error()}
+	}
+
 	c.Set(mp)
 
 	if err = c.Init(); err != nil {
@@ -80,18 +83,19 @@ func (m *MyVolumeDriver) Create(req volume.Request) volume.Response {
 }
 
 // convert template:<name> to templates/<name> for storage
-func parseCreateReqOptions(m map[string]string) map[string][]byte {
+func parseCreateReqOptions(m map[string]string) (map[string][]byte, error) {
 	out := map[string][]byte{}
 	for k, v := range m {
-		//log.Println(k)
 		if strings.HasPrefix(k, "template:") {
 			l := strings.Index(k, ":") + 1
 			out["templates/"+k[l:]] = []byte(v)
+		} else if strings.HasPrefix(k, "templates/") {
+			return nil, fmt.Errorf("cannot use reserved prefix: 'templates/' in '%s'", k)
 		} else {
 			out[k] = []byte(v)
 		}
 	}
-	return out
+	return out, nil
 }
 
 // Get the list of volumes registered with the plugin.
