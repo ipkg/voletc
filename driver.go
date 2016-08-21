@@ -108,7 +108,8 @@ func (m *MyVolumeDriver) List(req volume.Request) volume.Response {
 	}
 
 	resp := volume.Response{Capabilities: volume.Capability{Scope: driverScope}}
-	resp.Volumes = []*volume.Volume{}
+
+	out := map[string]*volume.Volume{}
 
 	for k, _ := range mp {
 		pp := strings.Split(k, "/")
@@ -119,12 +120,19 @@ func (m *MyVolumeDriver) List(req volume.Request) volume.Response {
 		}
 
 		n := fmt.Sprintf("%s-%s-%s", pp[0], pp[1], pp[2])
-		vol := &volume.Volume{
-			Name:       n,
-			Mountpoint: m.cfg.MountBaseDir + n,
-		}
-		resp.Volumes = append(resp.Volumes, vol)
 
+		if _, ok := out[n]; !ok {
+			out[n] = &volume.Volume{
+				Name:       n,
+				Mountpoint: m.cfg.MountBaseDir + n,
+			}
+		}
+	}
+	resp.Volumes = make([]*volume.Volume, len(out))
+	i := 0
+	for _, v := range out {
+		resp.Volumes[i] = v
+		i++
 	}
 
 	log.Printf("[List] Response: %+v", resp)
