@@ -19,30 +19,97 @@
     </section>
 
     <section class="main-content">
-      <h3>
-<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+      <h2>
+<a id="overview" class="anchor" href="#overview" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Overview</h2>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here <a href="https://guides.github.com/features/mastering-markdown/">using GitHub Flavored Markdown</a>, select a template crafted by a designer, and publish. After your page is generated, you can check out the new <code>gh-pages</code> branch locally. If you’re using GitHub Desktop, simply sync your repository and you’ll see the new branch.</p>
+<p>voletc (pronounced vol etc) is a Docker Volume Plugin that allows to create volumes containing application configurations that can be accessed on any of your docker nodes.  </p>
+
+<p>Once created the application no longer needs to worry about obtaining application specific configurations.  The mounted volume will contain all of config file/s based on the templates and keys you've specified during volume creation.</p>
+
+<p>The configuration data can be stored in consul or etcd but currently only consul support exists.</p>
+
+<p>A config volume name must be in the following format</p>
+
+<pre><code>&lt;name&gt;-&lt;version&gt;-&lt;environment&gt;
+</code></pre>
+
+<p>Based on this a volume is created per unique <code>name</code>, <code>version</code> and <code>environment</code>.  The layout looks like this:</p>
+
+<ul>
+<li>Each application has versions.</li>
+<li>Each version contains an associated template along with environments.</li>
+<li>Each environment contains its keys.</li>
+<li>Templates are shared across each environment and per environment keys are applied to the template</li>
+</ul>
 
 <h3>
-<a id="designer-templates" class="anchor" href="#designer-templates" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Designer Templates</h3>
+<a id="creating-volumes" class="anchor" href="#creating-volumes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Creating volumes</h3>
 
-<p>We’ve crafted some handsome templates for you to use. Go ahead and click 'Continue to layouts' to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved.</p>
+<pre><code>docker volume create --name test-0.1.0-dev -d voletc \
+    --opt=subpath/key=value \
+    --opt=template:config.json='{"key":"${subpath/key}"}'
+</code></pre>
 
-<h3>
-<a id="creating-pages-manually" class="anchor" href="#creating-pages-manually" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Creating pages manually</h3>
+<p>This creates a config volume with a <code>template</code> that will be called <code>config.json</code> and will also contain a key called <code>subpath/key</code> with a value of <code>value</code> persisting them to the backend.  When docker requests the volume to be mounted the configuration files will be dynamically generated and available on the newly created volume.</p>
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
-
-<h3>
-<a id="authors-and-contributors" class="anchor" href="#authors-and-contributors" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Authors and Contributors</h3>
-
-<p>You can @mention a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor’s GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
+<p><code>template</code> is a keyword signifying that key contains template data rather than just key value data.</p>
 
 <h3>
-<a id="support-or-contact" class="anchor" href="#support-or-contact" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Support or Contact</h3>
+<a id="using-volumes" class="anchor" href="#using-volumes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Using volumes</h3>
 
-<p>Having trouble with Pages? Check out our <a href="https://help.github.com/pages">documentation</a> or <a href="https://github.com/contact">contact support</a> and we’ll help you sort it out.</p>
+<pre><code>docker run --rm -it -v test-0.1.1-dev:/opt/myconfigs/ busbox
+</code></pre>
+
+<p>Your config should now be available at <code>/opt/myconfigs/config.json</code> in the running container.  If there are multiple config files they will all be located under <code>/opt/myconfigs</code>.  The naming of the config is controlled by what has been supplied as part of the <code>--opt=template:&lt;name&gt;.&lt;ext&gt;</code> argument at the time of creation.</p>
+
+<h3>
+<a id="removing-volumes" class="anchor" href="#removing-volumes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Removing volumes</h3>
+
+<pre><code>docker volume rm test-0.1.1-dev
+</code></pre>
+
+<p>Removing a volume removes all the associated keys from the backend for the given environment.  It does not remove the template (as it is associated to the version).</p>
+
+<h3>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h3>
+
+<p>Download the latest stable linux installer.  Once downloaded, untar and execute the installer.</p>
+
+<pre><code># Download installer
+curl -O -sL https://github.com/ipkg/voletc/releases/download/v0.1.1/voletc-0.1.1.tgz
+
+# Untar
+tar -zxvf voletc-0.1.1.tgz
+
+# Run installer
+./voletc-installer
+</code></pre>
+
+<p>This will install the binary and startup script in:</p>
+
+<ul>
+<li>/usr/local/bin/voletc</li>
+<li>/etc/init/voletc.conf</li>
+</ul>
+
+<p>respectively.  You can now start the service as follows:</p>
+
+<pre><code># Start the agent
+start voletc
+
+# Make sure it is running
+status voletc
+</code></pre>
+
+<p>To troubleshoot the service check the log located at <code>/var/log/voletc.log</code></p>
+
+<h4>
+<a id="roadmap" class="anchor" href="#roadmap" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Roadmap</h4>
+
+<ul>
+<li>Support for an encryption interface for stored data. </li>
+<li>Support for etcd as a backend.</li>
+</ul>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/ipkg/voletc">vol etc</a> is maintained by <a href="https://github.com/ipkg">ipkg</a>.</span>
