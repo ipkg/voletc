@@ -55,7 +55,6 @@ deps:
 install.sh:
 	cd ./build/linux && echo $${VOLETC_INSTALL} > install.sh
 	chmod +x ./build/linux/install.sh
-	cp ./build/linux/install.sh ./build/darwin/
 
 .PHONY: voletc.conf
 voletc.conf:
@@ -66,13 +65,10 @@ voletc.conf:
 # Should be run after make all
 .PHONY: installer
 installer:
-	sea ./build/linux/ $(NAME)-installer voletc ./install.sh
-	mv $(NAME)-installer ./build/linux
-	cd ./build/linux && tar -czvf $(NAME)-$(VERSION)-linux.tgz $(NAME)-installer && mv $(NAME)-$(VERSION)-linux.tgz ../
-
-	sea ./build/darwin/ $(NAME)-installer voletc ./install.sh
-	mv $(NAME)-installer ./build/darwin
-	cd ./build/darwin && tar -czvf $(NAME)-$(VERSION)-darwin.tgz $(NAME)-installer && mv $(NAME)-$(VERSION)-darwin.tgz ../
+	sea ./build/linux/ $(NAME)-installer.sh voletc ./install.sh
+	mv $(NAME)-installer.sh ./build/linux
+	cd ./build/linux && tar -czvf $(NAME)-$(VERSION)-linux.tgz $(NAME)-installer.sh && mv $(NAME)-$(VERSION)-linux.tgz ../
+	cd ./build/darwin && tar -czvf $(NAME)-$(VERSION)-darwin.tgz $(NAME) && mv $(NAME)-$(VERSION)-darwin.tgz ../
 
 all: .darwin-build .linux-build install.sh
 
