@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"strings"
 )
 
@@ -66,7 +65,7 @@ func (ac *AppConfig) AddTemplate(t *Template) error {
 		// add template keys
 		for k, _ := range keys {
 			if _, ok := ac.Keys[k]; !ok {
-				ac.Keys[k] = []byte{}
+				ac.Keys[k] = nil
 			}
 		}
 	}
@@ -74,8 +73,13 @@ func (ac *AppConfig) AddTemplate(t *Template) error {
 	return nil
 }
 
-func (c *AppConfig) HasKeys() bool {
-	return len(c.Keys) > 0
+func (c *AppConfig) HasMappedKeys() bool {
+	for _, v := range c.Keys {
+		if v != nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *AppConfig) Metadata() map[string]interface{} {
@@ -115,10 +119,7 @@ func (a *AppConfig) Commit() error {
 func (a *AppConfig) Generate(basedir string) error {
 	err := a.Load()
 	if err == nil {
-
 		keys := a.Keys.ToString()
-		log.Println("Keys from store:", keys)
-
 		for _, t := range a.Templates {
 			rendered, err := t.Render(keys)
 			if err == nil {
@@ -146,6 +147,7 @@ func (a *AppConfig) Set(data map[string][]byte) error {
 		k := strings.TrimPrefix(key, a.getOpaque(""))
 
 		switch {
+
 		case strings.HasPrefix(k, "templates"):
 			if t := NewTemplateFromKey(k); t != nil {
 				t.SetBody(v)
@@ -157,6 +159,7 @@ func (a *AppConfig) Set(data map[string][]byte) error {
 
 		}
 	}
+
 	return nil
 }
 

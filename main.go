@@ -26,11 +26,11 @@ func init() {
 		log.Fatal(err)
 	}
 
-	eor, err := cl.Run(flag.Args())
+	extOnRet, err := cl.Run(flag.Args())
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Volume", err)
 		os.Exit(1)
-	} else if eor {
+	} else if extOnRet {
 		os.Exit(0)
 	}
 }

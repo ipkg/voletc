@@ -15,7 +15,7 @@ func (ve *VolEtc) Get(name string) (*AppConfig, error) {
 		return nil, err
 	}
 	// doesn't really exist ???
-	if !acfg.HasKeys() {
+	if !acfg.HasMappedKeys() {
 		return nil, fmt.Errorf("not found: '%s'", name)
 	}
 
@@ -45,7 +45,7 @@ func (ve *VolEtc) List() (map[string]*AppConfig, error) {
 			return nil, err
 		}
 		// doesn't really exist ???
-		if !acfg.HasKeys() {
+		if !acfg.HasMappedKeys() {
 			continue
 		}
 

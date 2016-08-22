@@ -1,4 +1,5 @@
-# voletc
+# voletc [![Build Status](https://travis-ci.org/ipkg/voletc.svg?branch=master)](https://travis-ci.org/ipkg/voletc) [![Release](https://img.shields.io/github/release/ipkg/voletc.svg)](https://github.com/ipkg/voletc/releases)
+
 voletc (pronounced vol etc) is a Docker Volume Plugin that allows to create volumes containing application configurations that can be accessed on any of your docker nodes.  
 
 Once created the application no longer needs to worry about obtaining application specific configurations.  The mounted volume will contain all of config file/s based on the templates and keys you've specified during volume creation.

@@ -3,8 +3,6 @@ NAMESPACE = ipkg
 NAME = voletc
 VERSION = $(shell grep "const VERSION" version.go | cut -d "\"" -f 2)
 
-INST_PKG_NAME = $(NAME)-$(VERSION)-$(shell go env GOOS).tgz
-
 PROJPATH = github.com/$(NAMESPACE)/$(NAME)
 
 BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
@@ -31,27 +29,58 @@ export VOLETC_INSTALL
 clean:
 	rm -rf ./build
 	rm -f ./coverage.out
+	rm -rf ./testrun
 	go clean -i ./...
-	rm -f $(NAME)-installer
 
+
+# docker run -d -p 127.0.0.1:8500:8500 --name consul progrium/consul -server -bootstrap 
 .PHONY: test
-test: clean
-	docker run -d -p 127.0.0.1:8500:8500 --name consul progrium/consul -server -bootstrap
-	@sleep 3;
-	go test -coverprofile=coverage.out ./...; docker rm -f consul
-
+test:
+	go test -coverprofile=coverage.out ./...
 
 .PHONY: deps
 deps:
 	go get -d -v ./...
 
-build: clean voletc.conf install.sh
-	[ -d ./build ] || mkdir ./build
-	CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.buildtime=${BUILDTIME} -w" .
-	mv ${NAME} ./build/
+.linux-build: voletc.conf
+	GOOS=linux CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.buildtime=${BUILDTIME} -w" -o ./build/linux/$(NAME) .
+
+.darwin-build:
+	if [ -e ./build/darwin ]; then rm -rf ./build/darwin; fi
+	mkdir -p ./build/darwin
+
+	GOOS=darwin CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.buildtime=${BUILDTIME} -w" -o ./build/darwin/$(NAME) .
+
+.PHONY: install.sh
+install.sh:
+	cd ./build/linux && echo $${VOLETC_INSTALL} > install.sh
+	chmod +x ./build/linux/install.sh
+	cp ./build/linux/install.sh ./build/darwin/
+
+.PHONY: voletc.conf
+voletc.conf:
+	rm -rf ./build/linux
+	mkdir -p ./build/linux
+	cd ./build/linux && echo $${VOLETC_STARTUP} > voletc.conf
+
+# Should be run after make all
+.PHONY: installer
+installer:
+	sea ./build/linux/ $(NAME)-installer voletc ./install.sh
+	mv $(NAME)-installer ./build/linux
+	cd ./build/linux && tar -czvf $(NAME)-$(VERSION)-linux.tgz $(NAME)-installer && mv $(NAME)-$(VERSION)-linux.tgz ../
+
+	sea ./build/darwin/ $(NAME)-installer voletc ./install.sh
+	mv $(NAME)-installer ./build/darwin
+	cd ./build/darwin && tar -czvf $(NAME)-$(VERSION)-darwin.tgz $(NAME)-installer && mv $(NAME)-$(VERSION)-darwin.tgz ../
+
+all: .darwin-build .linux-build install.sh
+
+.docker-test:
+	docker run --link consul:consul --rm -v $(shell pwd):/go/src/${PROJPATH} -w /go/src/${PROJPATH} golang:1.6.3 make clean deps test
 
 .docker-build:
-	docker run --rm -v $(shell pwd):/go/src/${PROJPATH} -w /go/src/${PROJPATH} golang:1.6.3 make clean deps build
+	docker run --rm -v $(shell pwd):/go/src/${PROJPATH} -w /go/src/${PROJPATH} golang:1.6.3 make clean deps all
 
 # Assemble image
 .docker-image:
@@ -60,22 +89,3 @@ build: clean voletc.conf install.sh
 # Complete docker build
 .PHONY: docker
 docker: .docker-build .docker-image
-
-.PHONY: install.sh
-install.sh:
-	[ -d ./build ] || mkdir ./build
-	cd ./build && echo $${VOLETC_INSTALL} > install.sh
-	chmod +x ./build/install.sh
-
-.PHONY: voletc.conf
-voletc.conf:
-	[ -d ./build ] || mkdir ./build
-	cd ./build && echo $${VOLETC_STARTUP} > voletc.conf
-
-.PHONY: installer
-installer: build
-	sea ./build/ $(NAME)-installer voletc ./install.sh 
-	tar -czvf $(INST_PKG_NAME) $(NAME)-installer
-	mv $(NAME)-installer ./build/
-	mv $(INST_PKG_NAME) ./build/
-	

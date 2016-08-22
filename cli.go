@@ -6,6 +6,8 @@ import (
 	"fmt"
 	//"io/ioutil"
 	//"log"
+	"bufio"
+	"os"
 	//"path/filepath"
 	"strings"
 )
@@ -20,15 +22,9 @@ var (
 	dataPrefix = flag.String("prefix", driverName, "Path prefix to store data under")
 	backendUri = flag.String("uri", defaultConsulUri, "Backend uri")
 	listenAddr = flag.String("b", "127.0.0.1:8989", "Service bind address")
-	//showVersion = flag.Bool("version", false, "Show version")
-
-	// Use for template operations
-	//tfile      = flag.String("t", "", "Template file")
-	//appName    = flag.String("a", "", "Name of app ( <name>-<verison>-<env> )")
-	//render     = flag.Bool("r", false, "Render template")
-	//commitConf = flag.Bool("commit", false, "Commit app config to backend")
-
-	dryrun = false
+	// Set when cli is parsed
+	dryrun    = false
+	answerYes = new(bool)
 )
 
 type cli struct {
@@ -72,6 +68,59 @@ func (c *cli) Run(args []string) (bool, error) {
 					fmt.Printf("%s\n", rndrd)
 				}
 			}
+		}
+
+	case "rm":
+		if len(args) < 2 || args[1] == "" {
+			err = errInvalidConfName
+			break
+		}
+
+		var vol *AppConfig
+		if vol, err = c.ve.Get(args[1]); err == nil {
+			printDataStructue(vol)
+			parseCliKeyValues(args[2:])
+
+			if !*answerYes {
+				reader := bufio.NewReader(os.Stdin)
+				fmt.Printf("Are you sure you want to destroy '%s' [y/n]? : ", vol.QualifiedName())
+				ans, _ := reader.ReadString('\n')
+				ans = strings.TrimSuffix(ans, "\n")
+
+				if strings.ToLower(ans) != "y" && strings.ToLower(ans) != "yes" {
+					break
+				}
+			}
+
+			fmt.Printf("Destroying volume (%s)...\n", vol.QualifiedName())
+			err = vol.Destroy()
+
+		}
+
+	case "edit":
+		if len(args) < 2 || args[1] == "" {
+			err = errInvalidConfName
+			break
+		}
+
+		var vol *AppConfig
+		if vol, err = c.ve.Get(args[1]); err == nil {
+
+			if len(args[2:]) < 1 {
+				err = fmt.Errorf("no data provided")
+				break
+			}
+
+			ckvs := parseCliKeyValues(args[2:])
+			var reqOpts map[string][]byte
+			if reqOpts, err = parseCreateReqOptions(ckvs); err == nil {
+				vol.Set(reqOpts)
+				if !dryrun {
+					err = vol.Commit()
+				}
+				printDataStructue(vol)
+			}
+
 		}
 
 	case "create":
@@ -136,9 +185,14 @@ func parseCliKeyValues(arr []string) map[string]string {
 	for _, s := range arr {
 		// Treat keys starting with - specially.
 		if strings.HasPrefix(s, "-") {
-			if strings.HasSuffix(s, "-dryrun") {
+			switch {
+			case strings.HasSuffix(s, "-dryrun"):
 				dryrun = true
+
+			case strings.HasSuffix(s, "-y"):
+				*answerYes = true
 			}
+
 			continue
 		}
 
@@ -157,8 +211,7 @@ func printDataStructue(v interface{}) {
 	fmt.Printf("%s\n", b)
 }
 
-func printUsage() {
-	fmt.Println(`
+var usageHeader = `
 Usage:
 
   voletc [options] <cmd> [name] [key=value] [key=value]
@@ -169,18 +222,24 @@ Commands:
 
   ls        List volumes
   create    Create new volume
+  edit      Edit volume configurations
   info      Show volume info
+  rm        Destroy volume i.e. remove all keys
   render    Show rendered volume templates
   version   Show version
 
 Options:
-`)
-	flag.PrintDefaults()
-	fmt.Println(`Rules:
+`
+
+var usageFooter = `Rules:
 
   - Volume names: <name>-<version>-<env>
   - Template keys: template:<name_of_file>=<content_or_filepath>
   - File paths must begin with '/' or './' in order to be recognized.
-`)
-	//os.Exit(0)
+`
+
+func printUsage() {
+	fmt.Println(usageHeader)
+	flag.PrintDefaults()
+	fmt.Println(usageFooter)
 }

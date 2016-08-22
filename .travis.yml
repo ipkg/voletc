@@ -1,0 +1,29 @@
+language: go
+sudo: required
+go:
+- 1.6.3
+services:
+- docker
+before_install:
+- docker pull progrium/consul
+- docker pull golang:1.6.3
+install:
+- sudo service docker restart ; sleep 10
+- docker run -d -p 127.0.0.1:8500:8500 --name consul progrium/consul -server -bootstrap 
+- true
+before_script:
+- sleep 10
+- make .docker-test
+script:
+- make .docker-build
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key:
+    secure: VKajzP3u6dZh15/OV7tCWmoKsblg0k/B3dy9M3fU1wIZ/A+wttMZtCaqNzI65q94MBpu+9i8Yqb7apQMGz+scYtj5VmJ6FJRiczIDZeZ6pHbVlNudsCkPbjCXhC2f3MWgTCXf4W7Mw1MHket38WKnBTt3AIozeZfIMF5Vks7qUqqPO8U/sSnFn+ByONdFZmhkJzav8R2hfjqXC515tg31pnYpEloUKohvZGen8GG34cRp0VGNRq7P919Kpo5MLSC0HrXrUqtPxpMvdagnGGNQ4P+NdP1+JULzCep80r5TDsTE16AJxUKLarc11mtLsCWtMgD58bcZiwr2zI+9eKdDMrRBRO0wAjl1VwO/8xs2rgByBMNOfkYP6mcO6KgLEN96+UjhjxMTEjaMo/Z7Kze+ikPGq4h02h843BIwp8A4QovVGnV1bwLJoVVhpnJVU0lR365EYQ1o1Cj38CWRCe7gJcy9q6OBfCYK/e5BpUDSZZ+8QVCLFXLG5u4m2ARUI6aj/7xRnmeg/XHI9753Rmv0eoDihI7WJ2hKKXHQyJOthWN4qMLJ/3noeAO7jirYyEdtP3VwgunXCALNLIDu1Mx7Hq4KE+YVmq03nMnB70MOiY079rPJl4v7O+IacA2Xxw4Tjc0/gKQSolVgSaoheY1OfVd1qaEya0IIOz71Rmc99k=
+  file: build/voletc-*.tgz
+  file_glob: true
+  on:
+    tag: true
+    repo: ipkg/voletc

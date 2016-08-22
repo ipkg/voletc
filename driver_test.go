@@ -15,11 +15,11 @@ var (
 
 	testAppCfg    = &AppConfig{Name: "test", Version: "0.1.1", Env: "dev"}
 	testName      = testAppCfg.QualifiedName()
-	testConsulUri = defaultConsulUri
+	testConsulUri = "consul://consul:8500"
 )
 
 func init() {
-	testDrvCfg = NewDriverConfig(testConsulUri, "/tmp/testrun", "test-driver")
+	testDrvCfg = NewDriverConfig(testConsulUri, "./testrun", "test-driver")
 
 	var err error
 	if testDriver, err = NewVolumeDriver(testDrvCfg); err != nil {
@@ -27,7 +27,7 @@ func init() {
 	}
 }
 
-func Test_VolumeDriver_Create_Error(t *testing.T) {
+func Test_VolumeDriver_Error_Create(t *testing.T) {
 	req := volume.Request{
 		Name: testName,
 		Options: map[string]string{
@@ -66,9 +66,16 @@ func Test_VolumeDriver_Create(t *testing.T) {
 		t.Log("no templates")
 		t.Fail()
 	}
-	if len(c.Templates[0].Body) < 1 {
-		t.Log("no template data")
-		t.Fail()
+
+	if v, ok := c.Keys["n1/k1"]; !ok || string(v) != "v1" {
+		t.Fatal("missing keys")
+	}
+
+	if !t.Failed() {
+		if len(c.Templates[0].Body) < 1 {
+			t.Log("no template data")
+			t.Fail()
+		}
 	}
 }
 
@@ -147,10 +154,9 @@ func Test_VolumeDriver_Mount(t *testing.T) {
 		t.Fatal(r3.Err)
 	}
 
-	b, err := ioutil.ReadFile(testDriver.cfg.MountBaseDir + testAppCfg.getOpaque(testAppCfg.Env) + "/inline.json")
+	b, err := ioutil.ReadFile(testDriver.cfg.MountBaseDir + testAppCfg.getOpaque(testAppCfg.Env+"/inline.json"))
 	if err != nil {
-		t.Log(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 
 	if string(b) != `{"key": "v1"}` {

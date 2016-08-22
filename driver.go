@@ -67,6 +67,12 @@ func NewVolumeDriver(cfg *DriverConfig) (*MyVolumeDriver, error) {
 func (m *MyVolumeDriver) Create(req volume.Request) volume.Response {
 	log.Printf("[Create] Request: %+v\n", req)
 	// Create kv structure on backend.
+
+	_, err := m.ve.Get(req.Name)
+	if err == nil {
+		return volume.Response{Err: "exists: " + req.Name}
+	}
+
 	c, err := NewAppConfigFromName(req.Name, m.be)
 	if err != nil {
 		return volume.Response{Err: err.Error()}
@@ -177,9 +183,12 @@ func (m *MyVolumeDriver) Mount(req volume.MountRequest) volume.Response {
 	}
 
 	dpath := m.cfg.MountBaseDir + c.getOpaque(c.Env)
-	os.MkdirAll(dpath, 0777)
 
-	if err = c.Generate(dpath); err != nil {
+	if err = os.MkdirAll(dpath, 0777); err == nil {
+		err = c.Generate(dpath)
+	}
+
+	if err != nil {
 		return volume.Response{Err: err.Error()}
 	}
 
