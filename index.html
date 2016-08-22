@@ -42,7 +42,7 @@
 <li>Templates are shared across each environment and per environment keys are applied to the template</li>
 </ul>
 
-<p>Volumes can be managed through docker using the <code>docker volume</code> command and via the CLI tool.</p>
+<p>Volumes can be managed directly through <a href="#docker"><strong>docker</strong></a> and via the <a href="#command-line"><strong>CLI</strong></a>.</p>
 
 <h2>
 <a id="docker" class="anchor" href="#docker" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Docker</h2>
@@ -77,21 +77,99 @@
 
 <p>Removing a volume removes all the associated keys from the backend for the given environment.  It does not remove the template (as it is associated to the version).</p>
 
-<h2>
-<a id="command-line-tool" class="anchor" href="#command-line-tool" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Command Line Tool</h2>
+<p>Currently, there is not a way via Docker to change volumes configs once they have been created.  You can either use the <a href="#command-line"><strong>CLI</strong></a> or destroy and re-create the volume.</p>
 
-<p>This tool provides more functionality in regards to volume management than are available through docker.</p>
+<h2>
+<a id="command-line" class="anchor" href="#command-line" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Command Line</h2>
+
+<p>The command line tool provides more functionality in regards to volume management than are available through docker.</p>
+
+<pre><code>Usage:
+
+  voletc [options] &lt;cmd&gt; [name] [key=value] [key=value]
+
+  A tool to manage application configuration volumes.
+
+Commands:
+
+  ls        List volumes
+  create    Create new volume
+  edit      Edit volume configurations
+  info      Show volume info
+  rm        Destroy volume i.e. remove all keys
+  render    Show rendered volume templates
+  version   Show version
+
+Options:
+
+  -b string
+        Service bind address (default "127.0.0.1:8989")
+  -dir string
+        Data directory (default "/opt")
+  -prefix string
+        Path prefix to store data under (default "voletc")
+  -uri string
+        Backend uri (default "consul://localhost:8500")
+</code></pre>
+
+<p>Aside from the global options each command also has its specific options.</p>
+
+<h3>
+<a id="create-a-volume" class="anchor" href="#create-a-volume" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Create a volume</h3>
+
+<pre><code>voletc create test-0.1.1-dev \
+    db/name=dbname \
+    db/user=dbuser \
+    template:config.json=./config.json \
+    template:inline.json='{"db_name": "${db/name}", "db_user": "${db/user}"}'
+</code></pre>
+
+<p>To simply simulate the creation rather than actually creating the volume, use the <code>-dryrun</code> flag.</p>
+
+<h3>
+<a id="get-volume-details" class="anchor" href="#get-volume-details" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Get volume details</h3>
+
+<pre><code>voletc info test-0.1.1-dev
+</code></pre>
+
+<h3>
+<a id="list-volumes" class="anchor" href="#list-volumes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>List volumes</h3>
+
+<pre><code>voletc ls
+</code></pre>
+
+<h3>
+<a id="edit-a-volume" class="anchor" href="#edit-a-volume" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Edit a volume</h3>
+
+<pre><code>voletc edit test-0.1.1-dev db/user=new_user
+</code></pre>
+
+<p>To simply simulate the update rather than actually updating the volume configs, use the <code>-dryrun</code> flag.</p>
+
+<h3>
+<a id="render-volume-templates" class="anchor" href="#render-volume-templates" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Render volume templates</h3>
+
+<pre><code>voletc render test-0.1.1-dev
+</code></pre>
+
+<h3>
+<a id="remove-a-volume" class="anchor" href="#remove-a-volume" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Remove a volume</h3>
+
+<pre><code>voletc rm test-0.1.1-dev
+</code></pre>
+
+<p>To remove the volume without being prompted include the <code>-y</code> flag.</p>
 
 <h2>
 <a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h2>
 
-<p>Download the latest stable linux installer.  Once downloaded, untar and execute the installer.</p>
+<p>Download the latest stable installer for your platform.  Once downloaded, untar and execute the installer.</p>
 
 <pre><code># Download installer
-curl -O -sL https://github.com/ipkg/voletc/releases/download/v0.1.1/voletc-0.1.1.tgz
+curl -O -sL https://github.com/ipkg/voletc/releases/download/v0.1.6/voletc-0.1.6-linux.tgz
 
 # Untar
-tar -zxvf voletc-0.1.1.tgz
+tar -zxvf voletc-0.1.6-linux.tgz
 
 # Run installer
 ./voletc-installer
