@@ -18,14 +18,44 @@ const (
 )
 
 var (
-	baseDir    = flag.String("dir", defaultBaseDir, "Data directory")
+	backendUri = flag.String("H", defaultConsulUri, "Backend URI")
 	dataPrefix = flag.String("prefix", driverName, "Path prefix to store data under")
-	backendUri = flag.String("uri", defaultConsulUri, "Backend uri")
-	listenAddr = flag.String("b", "127.0.0.1:8989", "Service bind address")
+	listenAddr = flag.String("b", "127.0.0.1:8989", "Bind address [server mode only]")
+	baseDir    = flag.String("dir", defaultBaseDir, "Data directory")
 	// Set when cli is parsed
 	dryrun    = false
 	answerYes = new(bool)
 )
+
+var usageHeader = `
+Usage:
+
+  voletc [options] <cmd> [name] [key=value] [key=value]
+
+  vol etc is a distributed, persistent configuration volume with Docker
+  support.  It is a tool that runs as a service as well as a tool to 
+  manage volumes.
+
+Commands:
+
+  ls        List volumes
+  create    Create new volume
+  edit      Edit volume configurations
+  info      Show volume info
+  rm        Destroy volume i.e. remove all keys
+  render    Show rendered volume templates
+  version   Show version
+
+Global Options:
+
+  -H        Backend URI                       (default: consul://localhost:8500)
+  -prefix   Prefix on filesystem and backend  (default: voletc)
+
+Service Options:
+  
+  -b        Address the service listens on    (default: 127.0.0.1:8989)
+  -dir      Directory to store data under     (default: /opt)
+`
 
 type cli struct {
 	ve *VolEtc
@@ -211,35 +241,14 @@ func printDataStructue(v interface{}) {
 	fmt.Printf("%s\n", b)
 }
 
-var usageHeader = `
-Usage:
+var usageFooter = `* Notes:
 
-  voletc [options] <cmd> [name] [key=value] [key=value]
-
-  A tool to manage application configuration volumes. 
-
-Commands:
-
-  ls        List volumes
-  create    Create new volume
-  edit      Edit volume configurations
-  info      Show volume info
-  rm        Destroy volume i.e. remove all keys
-  render    Show rendered volume templates
-  version   Show version
-
-Options:
-`
-
-var usageFooter = `Rules:
-
-  - Volume names: <name>-<version>-<env>
-  - Template keys: template:<name_of_file>=<content_or_filepath>
-  - File paths must begin with '/' or './' in order to be recognized.
+ - Volume name format: <name>-<version>-<env>
+ - Template key format: template:<name_of_file>=<content_or_filepath>
+ - File paths must begin with '/' or './'
 `
 
 func printUsage() {
 	fmt.Println(usageHeader)
-	flag.PrintDefaults()
 	fmt.Println(usageFooter)
 }
