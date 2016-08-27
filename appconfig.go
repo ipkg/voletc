@@ -171,11 +171,11 @@ func (a *AppConfig) getOpaque(n string) string {
 // it adds the prefix to each key and returns a new map
 func (a *AppConfig) buildBackendDataMap() map[string][]byte {
 	m := map[string][]byte{}
-	// add appropriate prefix to each config key
+	// Add environment prefix to each config key
 	for k, v := range a.Keys {
 		m[a.Env+"/"+k] = v
 	}
-	// add prefix to template keys
+	// Add prefix to template keys
 	for _, t := range a.Templates {
 		m["templates/"+t.Name] = t.Body
 	}

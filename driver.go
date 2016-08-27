@@ -17,10 +17,11 @@ const (
 )
 
 type DriverConfig struct {
-	MountBaseDir string
-	BackendType  string
-	BackendAddr  string
-	Prefix       string
+	MountBaseDir  string
+	BackendType   string
+	BackendAddr   string
+	Prefix        string
+	EncryptionKey string
 }
 
 func NewDriverConfig(backendUri, basedir, prefix string) *DriverConfig {

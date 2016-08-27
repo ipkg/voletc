@@ -22,7 +22,9 @@ var (
 	dataPrefix = flag.String("prefix", driverName, "Path prefix to store data under")
 	listenAddr = flag.String("b", "127.0.0.1:8989", "Bind address [server mode only]")
 	baseDir    = flag.String("dir", defaultBaseDir, "Data directory")
-	// Set when cli is parsed
+
+	// These are client tool options
+	encDec    = flag.String("e", "", "Encryption/Decryption key")
 	dryrun    = false
 	answerYes = new(bool)
 )
@@ -55,6 +57,14 @@ Service Options:
   
   -b        Address the service listens on    (default: 127.0.0.1:8989)
   -dir      Directory to store data under     (default: /opt)
+<<<<<<< HEAD
+=======
+
+Client Options:
+
+  -e        Key to encrypt/decrypt data.  Must be atleast 16
+            characters in length.
+>>>>>>> encrypt
 `
 
 type cli struct {

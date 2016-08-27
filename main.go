@@ -21,6 +21,7 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	driverConfig = NewDriverConfig(*backendUri, *baseDir, *dataPrefix)
+	driverConfig.EncryptionKey = *encDec
 	cl, err := newCli(driverConfig)
 	if err != nil {
 		log.Fatal(err)

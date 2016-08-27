@@ -32,11 +32,12 @@ clean:
 	rm -rf ./testrun
 	go clean -i ./...
 
+.run-consul:
+	docker run -d -p 127.0.0.1:8500:8500 --name consul progrium/consul -server -bootstrap 
 
-# docker run -d -p 127.0.0.1:8500:8500 --name consul progrium/consul -server -bootstrap 
 .PHONY: test
 test:
-	go test -coverprofile=coverage.out ./...
+	go test -cover ./...
 
 .PHONY: deps
 deps:
