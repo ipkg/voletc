@@ -15,7 +15,7 @@ var (
 
 	testAppCfg    = &AppConfig{Name: "test", Version: "0.1.1", Env: "dev"}
 	testName      = testAppCfg.QualifiedName()
-	testConsulUri = "consul://127.0.0.1:8500"
+	testConsulUri = "consul://consul:8500"
 )
 
 func init() {

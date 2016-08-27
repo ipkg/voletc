@@ -94,8 +94,12 @@ func (c *cli) Run(args []string) (bool, error) {
 		}
 
 		var vol *AppConfig
-		if vol, err = c.ve.Get(args[1]); err == nil {
+		if vol, err = c.ve.Get(args[1]); err != nil {
+			fmt.Println("Volume", err)
+			vol, err = c.buildAppConfig(args[1], args[2:])
+		}
 
+		if err == nil {
 			for _, t := range vol.Templates {
 				fmt.Printf("- %s:\n", t.Name)
 
@@ -171,17 +175,10 @@ func (c *cli) Run(args []string) (bool, error) {
 			break
 		}
 
-		if vol, err = NewAppConfigFromName(args[1], c.ve.be); err == nil {
-			if len(args[2:]) > 0 {
-				ckvs := parseCliKeyValues(args[2:])
-				var reqOpts map[string][]byte
-				if reqOpts, err = parseCreateReqOptions(ckvs); err == nil {
-					vol.Set(reqOpts)
-					if !dryrun {
-						err = vol.Commit()
-					}
-					printDataStructue(vol)
-				}
+		if vol, err = c.buildAppConfig(args[1], args[2:]); err == nil {
+			if !dryrun {
+				err = vol.Commit()
+				printDataStructue(vol)
 			}
 		}
 
@@ -207,6 +204,21 @@ func (c *cli) Run(args []string) (bool, error) {
 	}
 
 	return true, err
+}
+
+func (c *cli) buildAppConfig(name string, args []string) (*AppConfig, error) {
+	vol, err := NewAppConfigFromName(name, c.ve.be)
+	if err == nil {
+		if len(args) > 0 {
+			ckvs := parseCliKeyValues(args)
+			var reqOpts map[string][]byte
+			if reqOpts, err = parseCreateReqOptions(ckvs); err == nil {
+				err = vol.Set(reqOpts)
+			}
+		}
+	}
+	return vol, err
+
 }
 
 func printVolumeTable(vols map[string]*AppConfig) {
