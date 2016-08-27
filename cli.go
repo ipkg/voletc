@@ -1,15 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
-	//"io/ioutil"
-	//"log"
-	"bufio"
 	"os"
-	//"path/filepath"
 	"strings"
+
+	"github.com/olekukonko/tablewriter"
 )
 
 const (
@@ -57,14 +56,11 @@ Service Options:
   
   -b        Address the service listens on    (default: 127.0.0.1:8989)
   -dir      Directory to store data under     (default: /opt)
-<<<<<<< HEAD
-=======
 
 Client Options:
 
   -e        Key to encrypt/decrypt data.  Must be atleast 16
             characters in length.
->>>>>>> encrypt
 `
 
 type cli struct {
@@ -202,13 +198,7 @@ func (c *cli) Run(args []string) (bool, error) {
 	case "ls":
 		var vols map[string]*AppConfig
 		if vols, err = c.ve.List(); err == nil {
-			mls := make([]map[string]interface{}, len(vols))
-			i := 0
-			for _, vol := range vols {
-				mls[i] = vol.Metadata()
-				i++
-			}
-			printDataStructue(mls)
+			printVolumeTable(vols)
 		}
 
 	default:
@@ -217,6 +207,29 @@ func (c *cli) Run(args []string) (bool, error) {
 	}
 
 	return true, err
+}
+
+func printVolumeTable(vols map[string]*AppConfig) {
+	tw := tablewriter.NewWriter(os.Stdout)
+	tw.SetHeader([]string{"volume id", "name", "version", "env", "keys", "files"})
+
+	for _, vol := range vols {
+		md := vol.Metadata()
+		tw.Append([]string{
+			md["id"].(string),
+			md["name"].(string),
+			md["version"].(string),
+			md["env"].(string),
+			fmt.Sprintf("%d", md["keys"]),
+			fmt.Sprintf("%d", md["files"]),
+		})
+	}
+
+	tw.SetHeaderLine(false)
+	tw.SetColumnSeparator("")
+	tw.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	tw.SetBorder(false)
+	tw.Render()
 }
 
 // Parse cli key values into a map
