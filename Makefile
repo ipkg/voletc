@@ -51,6 +51,7 @@ voletc.conf:
 # Should be run after make all
 .PHONY: installer
 installer:
+	chmod +w ./build
 	cd ./build && tar -czf $(NAME)-$(VERSION)-linux.tgz -C ./linux/ .
 	cd ./build && tar -czf $(NAME)-$(VERSION)-darwin.tgz  -C ./darwin/ .
 
