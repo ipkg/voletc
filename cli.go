@@ -6,7 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/olekukonko/tablewriter"
 )
@@ -21,6 +23,7 @@ var (
 	dataPrefix = flag.String("prefix", driverName, "Path prefix to store data under")
 	listenAddr = flag.String("b", "127.0.0.1:8989", "Bind address [server mode only]")
 	baseDir    = flag.String("dir", defaultBaseDir, "Data directory")
+	serverMode = flag.Bool("server", false, "Server mode")
 
 	// These are client tool options
 	encDec    = flag.String("e", "", "Encryption/Decryption key")
@@ -37,6 +40,25 @@ Usage:
   support.  It is a tool that runs as a service as well as a tool to 
   manage volumes.
 
+  Key-value pairs are are specified in the following format: path/to/key=value.
+  Templates and template files are also specified in the same format but must be
+  prefixed with 'template:'.  When using file paths, absolute or relative paths
+  must be specified
+
+  Key-Value Examples:
+
+  - Template key with file path as value.  The contents of the file are used.
+
+    template:config.json=./etc/config.json
+
+  - Template key with content as value
+
+    template:config.json='{"k": "${path/to/key}"}'
+
+  - Key-Value
+
+    db/host=127.0.0.1
+
 Commands:
 
   ls        List volumes
@@ -45,13 +67,14 @@ Commands:
   info      Show volume info
   rm        Destroy volume i.e. remove all keys
   render    Show rendered volume templates
-  mount     Mount config volume via fuse.
+  mount     Mount config volume via fuse (experimental)
   version   Show version
 
 Global Options:
 
   -H        Backend URI                       (default: consul://localhost:8500)
   -prefix   Prefix on filesystem and backend  (default: voletc)
+  -server   Start docker plugin service
 
 Service Options:
   
@@ -61,7 +84,7 @@ Service Options:
 Client Options:
 
   -e        Key to encrypt/decrypt data.  Must be atleast 16
-            characters in length.
+            characters in length. 
 `
 
 type cli struct {
@@ -76,11 +99,11 @@ func newCli(dc *DriverConfig) (*cli, error) {
 	return &cli{ve: &VolEtc{be: be}}, nil
 }
 
-func (c *cli) Run(args []string) (bool, error) {
+func (c *cli) Run(args []string) error {
 	var err error
 
 	if args == nil || len(args) < 1 {
-		return false, nil
+		return fmt.Errorf("command missing")
 	}
 
 	switch args[0] {
@@ -200,9 +223,29 @@ func (c *cli) Run(args []string) (bool, error) {
 		}
 
 		var vol *AppConfig
-		if vol, err = c.ve.Get(args[1]); err == nil {
-			acfs := AppConfigFS{acfg: vol, mntPoint: args[2]}
-			err = acfs.Mount()
+		if vol, err = c.ve.Get(args[1]); err != nil {
+			break
+		}
+
+		acfs := AppConfigFS{acfg: vol, mntPoint: args[2]}
+		done := make(chan bool)
+
+		go func() {
+			if e := acfs.Mount(); e != nil {
+				fmt.Println("ERR", e)
+			}
+			done <- true
+		}()
+
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		select {
+		case <-sigs:
+			err = acfs.Unmount()
+
+		case <-done:
+			err = acfs.Unmount()
 		}
 
 	case "ls":
@@ -216,7 +259,7 @@ func (c *cli) Run(args []string) (bool, error) {
 
 	}
 
-	return true, err
+	return err
 }
 
 func (c *cli) buildAppConfig(name string, args []string) (*AppConfig, error) {
@@ -289,14 +332,15 @@ func printDataStructue(v interface{}) {
 	fmt.Printf("%s\n", b)
 }
 
+/*
 var usageFooter = `* Notes:
 
  - Volume name format: <name>-<version>-<env>
  - Template key format: template:<name_of_file>=<content_or_filepath>
  - File paths must begin with '/' or './'
 `
-
+*/
 func printUsage() {
 	fmt.Println(usageHeader)
-	fmt.Println(usageFooter)
+	//fmt.Println(usageFooter)
 }
