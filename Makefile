@@ -13,18 +13,10 @@ define VOLETC_STARTUP
 description "voletc plugin"\n
 start on (local-filesystems and net-device-up IFACE=eth0)\n
 stop on runlevel [!12345]\n
-exec voletc >> /var/log/$(NAME).log 2>&1
-endef
-
-define VOLETC_INSTALL
-mkdir -p /usr/local/bin\n
-mv ./voletc /usr/local/bin/\n
-mkdir -p /etc/init/\n
-mv ./voletc.conf /etc/init/
+exec voletc -server >> /var/log/$(NAME).log 2>&1
 endef
 
 export VOLETC_STARTUP
-export VOLETC_INSTALL
 
 clean:
 	rm -rf ./build
@@ -44,34 +36,25 @@ deps:
 	go get -d -v ./...
 
 .linux-build: voletc.conf
-	GOOS=linux CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.buildtime=${BUILDTIME} -w" -o ./build/linux/$(NAME) .
+	mkdir -p ./build/linux/usr/local/bin
+	GOOS=linux CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.buildtime=${BUILDTIME} -w" -o ./build/linux/usr/local/bin/$(NAME) .
 
 .darwin-build:
-	if [ -e ./build/darwin ]; then rm -rf ./build/darwin; fi
 	mkdir -p ./build/darwin
-
 	GOOS=darwin CGO_ENABLED=0 go build -a -tags netgo -installsuffix netgo -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.buildtime=${BUILDTIME} -w" -o ./build/darwin/$(NAME) .
-
-.PHONY: install.sh
-install.sh:
-	cd ./build/linux && echo $${VOLETC_INSTALL} > install.sh
-	chmod +x ./build/linux/install.sh
 
 .PHONY: voletc.conf
 voletc.conf:
-	rm -rf ./build/linux
-	mkdir -p ./build/linux
-	cd ./build/linux && echo $${VOLETC_STARTUP} > voletc.conf
+	mkdir -p ./build/linux/etc/init/
+	echo $${VOLETC_STARTUP} > ./build/linux/etc/init/voletc.conf
 
 # Should be run after make all
 .PHONY: installer
 installer:
-	sea ./build/linux/ $(NAME)-installer.sh voletc ./install.sh
-	mv $(NAME)-installer.sh ./build/linux
-	cd ./build/linux && tar -czvf $(NAME)-$(VERSION)-linux.tgz $(NAME)-installer.sh && mv $(NAME)-$(VERSION)-linux.tgz ../
-	cd ./build/darwin && tar -czvf $(NAME)-$(VERSION)-darwin.tgz $(NAME) && mv $(NAME)-$(VERSION)-darwin.tgz ../
+	cd ./build && tar -czf $(NAME)-$(VERSION)-linux.tgz -C ./linux/ .
+	cd ./build && tar -czf $(NAME)-$(VERSION)-darwin.tgz  -C ./darwin/ .
 
-all: .darwin-build .linux-build install.sh
+all: .darwin-build .linux-build
 
 .docker-test:
 	docker run --link consul:consul --rm -v $(shell pwd):/go/src/${PROJPATH} -w /go/src/${PROJPATH} golang:1.6.3 make clean deps test
