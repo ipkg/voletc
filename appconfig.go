@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"strings"
 )
 
@@ -133,6 +134,15 @@ func (a *AppConfig) Generate(basedir string) error {
 	}
 
 	return err
+}
+
+func (a *AppConfig) cacheRender() {
+	keys := a.Keys.ToString()
+	for _, t := range a.Templates {
+		if _, err := t.Render(keys); err != nil {
+			log.Println("ERR", err)
+		}
+	}
 }
 
 // Destroy keys from the backend.

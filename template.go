@@ -10,6 +10,8 @@ type Template struct {
 	Name string `json:"name"`
 	Body []byte `json:"body"`
 	Sha1 string `json:"sha1"`
+
+	rendered []byte
 }
 
 func NewTemplateFromKey(key string) *Template {
@@ -24,6 +26,7 @@ func NewTemplateFromKey(key string) *Template {
 func (t *Template) SetBody(b []byte) {
 	t.Body = b
 	t.Sha1 = fmt.Sprintf("%x", sha1.Sum(t.Body))
+	t.rendered = b
 	return
 }
 
@@ -57,7 +60,15 @@ func (t *Template) Render(m map[string]string) ([]byte, error) {
 	}
 
 	err := validate(out)
+	if err == nil {
+		t.rendered = out
+	}
+
 	return out, err
+}
+
+func (t *Template) clearRendered() {
+	t.rendered = t.Body
 }
 
 // Extract keys from template

@@ -45,6 +45,7 @@ Commands:
   info      Show volume info
   rm        Destroy volume i.e. remove all keys
   render    Show rendered volume templates
+  mount     Mount config volume via fuse.
   version   Show version
 
 Global Options:
@@ -190,6 +191,18 @@ func (c *cli) Run(args []string) (bool, error) {
 		var vol *AppConfig
 		if vol, err = c.ve.Get(args[1]); err == nil {
 			printDataStructue(vol)
+		}
+
+	case "mount":
+		if len(args) < 3 || args[1] == "" || args[2] == "" {
+			err = errInvalidConfName
+			break
+		}
+
+		var vol *AppConfig
+		if vol, err = c.ve.Get(args[1]); err == nil {
+			acfs := AppConfigFS{acfg: vol, mntPoint: args[2]}
+			err = acfs.Mount()
 		}
 
 	case "ls":

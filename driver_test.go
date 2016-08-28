@@ -10,12 +10,14 @@ import (
 )
 
 var (
+	testConsulUri = "consul://consul:8500"
+	//testConsulUri = "consul://127.0.0.1:8500"
+
 	testDrvCfg *DriverConfig
 	testDriver *MyVolumeDriver
 
-	testAppCfg    = &AppConfig{Name: "test", Version: "0.1.1", Env: "dev"}
-	testName      = testAppCfg.QualifiedName()
-	testConsulUri = "consul://consul:8500"
+	testAppCfg = &AppConfig{Name: "test", Version: "0.1.1", Env: "dev"}
+	testName   = testAppCfg.QualifiedName()
 )
 
 func init() {
