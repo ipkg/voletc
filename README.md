@@ -58,7 +58,28 @@ The command line tool provides more functionality in regards to volume managemen
 
 	  voletc [options] <cmd> [name] [key=value] [key=value]
 
-	  A tool to manage application configuration volumes.
+	  vol etc is a distributed, persistent configuration volume with Docker
+	  support.  It is a tool that runs as a service as well as a tool to
+	  manage volumes.
+
+	  Key-value pairs are are specified in the following format: path/to/key=value.
+	  Templates and template files are also specified in the same format but must be
+	  prefixed with 'template:'.  When using file paths, absolute or relative paths
+	  must be specified
+
+	  Key-Value Examples:
+
+	  - Template key with file path as value.  The contents of the file are used.
+
+	    template:config.json=./etc/config.json
+
+	  - Template key with content as value
+
+	    template:config.json='{"k": "${path/to/key}"}'
+
+	  - Key-Value
+
+	    db/host=127.0.0.1
 
 	Commands:
 
@@ -68,18 +89,24 @@ The command line tool provides more functionality in regards to volume managemen
 	  info      Show volume info
 	  rm        Destroy volume i.e. remove all keys
 	  render    Show rendered volume templates
+	  mount     Mount config volume via fuse (experimental)
 	  version   Show version
 
-	Options:
+	Global Options:
 
-	  -b string
-	    	Service bind address (default "127.0.0.1:8989")
-	  -dir string
-	    	Data directory (default "/opt")
-	  -prefix string
-	    	Path prefix to store data under (default "voletc")
-	  -uri string
-	    	Backend uri (default "consul://localhost:8500")
+	  -H        Backend URI                       (default: consul://localhost:8500)
+	  -prefix   Prefix on filesystem and backend  (default: voletc)
+	  -server   Start docker plugin service
+
+	Service Options:
+
+	  -b        Address the service listens on    (default: 127.0.0.1:8989)
+	  -dir      Directory to store data under     (default: /opt)
+
+	Client Options:
+
+	  -e        Key to encrypt/decrypt data.  Must be atleast 16
+	            characters in length.
 
 Aside from the global options each command also has its specific options.
 
