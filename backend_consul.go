@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"strings"
 
 	"github.com/hashicorp/consul/api"
@@ -24,6 +25,16 @@ func NewConsulBackend(addr string, prefix string) (*ConsulBackend, error) {
 	cbe.client, err = api.NewClient(cbe.cfg)
 
 	return cbe, err
+}
+
+func (cb *ConsulBackend) KeyExists(key string) bool {
+	kv := cb.client.KV()
+	k, _, err := kv.Keys(cb.getOpaque(key), "", nil)
+	if err != nil {
+		log.Println("WRN", err)
+		return false
+	}
+	return len(k) > 0
 }
 
 func (cb *ConsulBackend) getOpaque(key string) string {

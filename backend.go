@@ -15,6 +15,8 @@ type Backend interface {
 	SetMap(string, map[string][]byte) error
 	// Delete all keys under the given prefix
 	DeleteMap(string) error
+
+	KeyExists(string) bool
 }
 
 func NewBackend(dcfg *DriverConfig) (Backend, error) {
@@ -75,6 +77,10 @@ func (ebe *BasicEncryptedBackend) SetMap(prefix string, kmap map[string][]byte) 
 	}
 
 	return ebe.be.SetMap(prefix, emap)
+}
+
+func (ebe *BasicEncryptedBackend) KeyExists(key string) bool {
+	return ebe.be.KeyExists(key)
 }
 
 // Delete all keys under the given prefix

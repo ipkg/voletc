@@ -151,17 +151,14 @@ The current supported platforms are [Linux](#linux) and [OS X](#os-x).  Download
 Download the linux package from [here](https://github.com/ipkg/voletc/releases).  Once downloaded, untar and execute the installer.
 
 	# Untar
-	tar -zxvf voletc-0.1.6-linux.tgz
-	
-	# Run installer
-	./voletc-installer.sh
+	tar -C / -zxf voletc-0.1.6-linux.tgz
 
-This will install the binary and startup script.
+This will install the binary and startup script in the following locations.
 
 - /usr/local/bin/voletc
 - /etc/init/voletc.conf
 
-You can now start the service as follows:
+You can now start/stop the daemon as follows:
 
 	# Start the agent
 	start voletc

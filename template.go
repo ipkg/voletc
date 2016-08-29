@@ -25,8 +25,10 @@ func NewTemplateFromKey(key string) *Template {
 
 func (t *Template) SetBody(b []byte) {
 	t.Body = b
-	t.Sha1 = fmt.Sprintf("%x", sha1.Sum(t.Body))
 	t.rendered = b
+	if t.Body != nil {
+		t.Sha1 = fmt.Sprintf("%x", sha1.Sum(t.Body))
+	}
 	return
 }
 

@@ -74,13 +74,8 @@ func (ac *AppConfig) AddTemplate(t *Template) error {
 	return nil
 }
 
-func (c *AppConfig) HasMappedKeys() bool {
-	for _, v := range c.Keys {
-		if v != nil {
-			return true
-		}
-	}
-	return false
+func (c *AppConfig) Exists() bool {
+	return c.be.KeyExists(c.getOpaque(c.Env))
 }
 
 func (c *AppConfig) Metadata() map[string]interface{} {
@@ -150,12 +145,11 @@ func (a *AppConfig) Destroy() error {
 	return a.be.DeleteMap(a.getOpaque(a.Env + "/"))
 }
 
-// Set input data to  datastructure
+// Set input data to  datastructure.  Strip key prefixes before setting
 func (a *AppConfig) Set(data map[string][]byte) error {
 
 	for key, v := range data {
 		k := strings.TrimPrefix(key, a.getOpaque(""))
-
 		switch {
 
 		case strings.HasPrefix(k, "templates"):

@@ -11,7 +11,6 @@ import (
 
 var (
 	testConsulUri = "consul://consul:8500"
-	//testConsulUri = "consul://127.0.0.1:8500"
 
 	testDrvCfg *DriverConfig
 	testDriver *MyVolumeDriver
@@ -21,6 +20,10 @@ var (
 )
 
 func init() {
+	cu := os.Getenv("CONSUL")
+	if cu != "" {
+		testConsulUri = cu
+	}
 	testDrvCfg = NewDriverConfig(testConsulUri, "./testrun", "test-driver")
 
 	var err error

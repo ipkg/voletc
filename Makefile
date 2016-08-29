@@ -52,8 +52,8 @@ voletc.conf:
 .PHONY: installer
 installer:
 	chmod +w ./build
-	cd ./build && tar -czf $(NAME)-$(VERSION)-linux.tgz -C ./linux/ .
-	cd ./build && tar -czf $(NAME)-$(VERSION)-darwin.tgz  -C ./darwin/ .
+	cd ./build && tar -C ./linux/ -czf $(NAME)-$(VERSION)-linux.tgz .
+	cd ./build && tar -C ./darwin/ -czf $(NAME)-$(VERSION)-darwin.tgz .
 
 all: .darwin-build .linux-build
 
