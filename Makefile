@@ -34,6 +34,7 @@ test:
 .PHONY: deps
 deps:
 	go get -d -v ./...
+	mkdir -p -m 0777 ./build
 
 .linux-build: voletc.conf
 	mkdir -p ./build/linux/usr/local/bin
@@ -51,7 +52,6 @@ voletc.conf:
 # Should be run after make all
 .PHONY: installer
 installer:
-	chmod +w ./build
 	cd ./build && tar -C ./linux/ -czf $(NAME)-$(VERSION)-linux.tgz .
 	cd ./build && tar -C ./darwin/ -czf $(NAME)-$(VERSION)-darwin.tgz .
 
