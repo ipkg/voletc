@@ -79,6 +79,7 @@ func (c *AppConfig) Exists() bool {
 }
 
 func (c *AppConfig) Metadata() map[string]interface{} {
+	log.Println(c.Keys)
 	return map[string]interface{}{
 		"id":      c.QualifiedName(),
 		"name":    c.Name,
@@ -150,6 +151,7 @@ func (a *AppConfig) Set(data map[string][]byte) error {
 
 	for key, v := range data {
 		k := strings.TrimPrefix(key, a.getOpaque(""))
+
 		switch {
 
 		case strings.HasPrefix(k, "templates"):
@@ -159,7 +161,10 @@ func (a *AppConfig) Set(data map[string][]byte) error {
 			}
 
 		default:
-			a.Keys[strings.TrimPrefix(k, a.Env+"/")] = v
+			tk := strings.TrimPrefix(k, a.Env)
+			if tk = strings.TrimPrefix(tk, "/"); tk != "" {
+				a.Keys[tk] = v
+			}
 
 		}
 	}
@@ -176,13 +181,19 @@ func (a *AppConfig) getOpaque(n string) string {
 func (a *AppConfig) buildBackendDataMap() map[string][]byte {
 	m := map[string][]byte{}
 	// Add environment prefix to each config key
-	for k, v := range a.Keys {
-		m[a.Env+"/"+k] = v
+	if len(a.Keys) > 0 {
+		for k, v := range a.Keys {
+			m[a.Env+"/"+k] = v
+		}
+	} else {
+		m[a.Env] = []byte{}
 	}
+
 	// Add prefix to template keys
 	for _, t := range a.Templates {
 		m["templates/"+t.Name] = t.Body
 	}
+
 	return m
 }
 
